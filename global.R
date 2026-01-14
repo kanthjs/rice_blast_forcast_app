@@ -1,5 +1,6 @@
 # global.R
 library(shiny)
+library(shinyjs)
 library(bslib)
 library(leaflet)
 library(plotly)

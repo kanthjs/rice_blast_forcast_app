@@ -111,23 +111,8 @@ ui <- page_fillable(
             div(
                 class = "btn-group-toggle d-flex flex-wrap mt-2",
                 actionButton(
-                    "past_week",
-                    "Past week",
-                    class = "btn-sm btn-light"
-                ),
-                actionButton(
-                    "past_month",
-                    "Past month",
-                    class = "btn-sm btn-light"
-                ),
-                actionButton(
-                    "next_14_days",
-                    "Next 14 days",
-                    class = "btn-sm btn-light"
-                ),
-                actionButton(
-                    "this_season",
-                    "This season",
+                    "past_3_days",
+                    "Past 3 days",
                     class = "btn-sm btn-light"
                 )
             ),
@@ -217,6 +202,17 @@ ui <- page_fillable(
                                     "Susceptible Breed" = "susceptible",
                                     "Resistant Breed" = "resistant"
                                 )
+                            )
+                        ),
+                        conditionalPanel(
+                            condition = "input.model_selected == 'BUS'",
+                            numericInput(
+                                "bus_threshold",
+                                "BUS Score Threshold:",
+                                value = 2.25,
+                                min = 0,
+                                max = 10,
+                                step = 0.25
                             )
                         ),
 
@@ -320,141 +316,6 @@ ui <- page_fillable(
                             )
                         )
                     )
-                ),
-                # --- NEW: Model Debugger Tab ---
-                nav_panel(
-                    "Model Debugger",
-                    div(
-                        class = "mt-2 px-3",
-                        h5("ตรวจสอบโมเดล (Model Verification)", class = "mb-3"),
-                        p(
-                            class = "text-muted small",
-                            "ใส่ข้อมูลสภาพอากาศด้วยตนเอง เพื่อตรวจสอบว่าโมเดลคำนวณถูกต้องหรือไม่"
-                        ),
-
-                        # Model Selection for Debugger
-                        h6("เลือกโมเดล:", class = "mt-3"),
-                        selectInput(
-                            "debug_model",
-                            NULL,
-                            choices = c(
-                                "FIST",
-                                "EDRM",
-                                "BUS",
-                                "BLASTAM",
-                                "EPIBLA"
-                            ),
-                            selected = "EDRM",
-                            width = "100%"
-                        ),
-
-                        conditionalPanel(
-                            condition = "input.debug_model == 'EDRM'",
-                            numericInput(
-                                "debug_rice_age",
-                                "อายุข้าว (วัน):",
-                                value = 30,
-                                min = 1,
-                                max = 120
-                            )
-                        ),
-                        conditionalPanel(
-                            condition = "input.debug_model == 'EPIBLA'",
-                            selectInput(
-                                "debug_resistance",
-                                "ความต้านทานพันธุ์:",
-                                choices = c(
-                                    "พันธุ์อ่อนแอ" = "susceptible",
-                                    "พันธุ์ต้านทาน" = "resistant"
-                                )
-                            )
-                        ),
-
-                        hr(),
-                        h6("ข้อมูลสภาพอากาศ (7 วัน):", class = "mt-3"),
-                        p(
-                            class = "text-muted small",
-                            "ใส่ข้อมูลรายวัน: อุณหภูมิสูงสุด/ต่ำสุด (°C), ความชื้นสูงสุด/ต่ำสุด (%), ฝน (mm), ชั่วโมงที่ RH >= 90%"
-                        ),
-
-                        # Simple 7-row input table using fluidRow
-                        div(
-                            style = "overflow-x: auto;",
-                            tags$table(
-                                class = "table table-sm table-bordered",
-                                tags$thead(
-                                    tags$tr(
-                                        tags$th("วัน"),
-                                        tags$th("Tmax"),
-                                        tags$th("Tmin"),
-                                        tags$th("RHmax"),
-                                        tags$th("RHmin"),
-                                        tags$th("Rain"),
-                                        tags$th("RH90hrs")
-                                    )
-                                ),
-                                tags$tbody(
-                                    lapply(1:7, function(i) {
-                                        tags$tr(
-                                            tags$td(paste0("Day ", i)),
-                                            tags$td(numericInput(
-                                                paste0("d", i, "_tmax"),
-                                                NULL,
-                                                value = 32,
-                                                width = "60px"
-                                            )),
-                                            tags$td(numericInput(
-                                                paste0("d", i, "_tmin"),
-                                                NULL,
-                                                value = 24,
-                                                width = "60px"
-                                            )),
-                                            tags$td(numericInput(
-                                                paste0("d", i, "_rhmax"),
-                                                NULL,
-                                                value = 95,
-                                                width = "60px"
-                                            )),
-                                            tags$td(numericInput(
-                                                paste0("d", i, "_rhmin"),
-                                                NULL,
-                                                value = 60,
-                                                width = "60px"
-                                            )),
-                                            tags$td(numericInput(
-                                                paste0("d", i, "_rain"),
-                                                NULL,
-                                                value = 0,
-                                                width = "60px"
-                                            )),
-                                            tags$td(numericInput(
-                                                paste0("d", i, "_rh90"),
-                                                NULL,
-                                                value = 8,
-                                                width = "60px"
-                                            ))
-                                        )
-                                    })
-                                )
-                            )
-                        ),
-
-                        actionButton(
-                            "run_debug_model",
-                            "คำนวณ (Run Model)",
-                            class = "btn-primary w-100 mt-3",
-                            icon = icon("calculator")
-                        ),
-
-                        hr(),
-                        h6("ผลการคำนวณ:", class = "mt-3"),
-                        div(
-                            class = "alert alert-secondary",
-                            uiOutput("debug_result_summary")
-                        ),
-                        h6("รายละเอียดการคำนวณ:", class = "mt-3"),
-                        DT::DTOutput("debug_result_table")
-                    )
                 )
             )
         )
@@ -472,7 +333,7 @@ server <- function(input, output, session) {
         dataset_type = "hourly",
         severity = 0,
         high_risk_days = 0,
-        selected_model = "EDRM"
+        selected_model = "Classic"
     )
 
     # Map Initialization - Optimized with lazy loading
@@ -608,9 +469,10 @@ server <- function(input, output, session) {
         list(
             input$refresh,
             input$go_loc,
-            input$next_14_days,
+            input$past_3_days,
             input$rice_age,
-            input$model_selected
+            input$model_selected,
+            input$bus_threshold
         ),
         {
             req(rv$lat, rv$long)
@@ -627,18 +489,18 @@ server <- function(input, output, session) {
 
                         if (
                             is.null(input$model_selected) ||
-                                input$model_selected == "EDRM"
+                                input$model_selected == "Classic"
                         ) {
-                            # Use Advanced Model (EDRM)
-                            res <- calculate_rice_blast_risk_advanced(
-                                w_data,
-                                start_dat = input$rice_age
-                            )
-                            rv$severity <- res$severity_projection
-                            rv$high_risk_days <- res$high_risk_days
+                            # Use Basic Model (Classic)
+                            res <- calculate_rice_blast_risk(w_data)
+                            rv$severity <- NULL
+                            rv$high_risk_days <- NULL
                         } else if (input$model_selected == "BUS") {
                             # Use BUS Model
-                            res <- calculate_rice_blast_risk_bus(w_data)
+                            res <- calculate_rice_blast_risk_bus(
+                                w_data,
+                                threshold = input$bus_threshold
+                            )
                             rv$severity <- res$severity_projection
                             rv$high_risk_days <- res$high_risk_days
                         } else if (input$model_selected == "BLASTAM") {
@@ -654,8 +516,16 @@ server <- function(input, output, session) {
                             )
                             rv$severity <- res$severity_projection
                             rv$high_risk_days <- res$high_risk_days
+                        } else if (input$model_selected == "EDRM") {
+                            # Use Advanced Model (EDRM)
+                            res <- calculate_rice_blast_risk_advanced(
+                                w_data,
+                                start_dat = input$rice_age
+                            )
+                            rv$severity <- res$severity_projection
+                            rv$high_risk_days <- res$high_risk_days
                         } else {
-                            # Use Basic Model (FIST)
+                            # Default Fallback (Classic)
                             res <- calculate_rice_blast_risk(w_data)
                             rv$severity <- NULL
                             rv$high_risk_days <- NULL
@@ -693,19 +563,8 @@ server <- function(input, output, session) {
         ignoreNULL = FALSE
     )
 
-    # Date range presets
-    observeEvent(input$next_14_days, {
-        updateDateInput(session, "start_date", value = Sys.Date())
-        updateDateInput(session, "end_date", value = Sys.Date() + 14)
-    })
-
-    observeEvent(input$past_week, {
-        updateDateInput(session, "start_date", value = Sys.Date() - 7)
-        updateDateInput(session, "end_date", value = Sys.Date())
-    })
-
-    observeEvent(input$past_month, {
-        updateDateInput(session, "start_date", value = Sys.Date() - 30)
+    observeEvent(input$past_3_days, {
+        updateDateInput(session, "start_date", value = Sys.Date() - 3)
         updateDateInput(session, "end_date", value = Sys.Date())
     })
 
@@ -807,8 +666,9 @@ server <- function(input, output, session) {
                 return(msg)
             }
 
+            score <- round(today$risk_score[1], 0)
             return(paste0(
-                today$risk_score[1],
+                score,
                 "% (",
                 today$risk_level[1],
                 " risk)"
@@ -822,30 +682,63 @@ server <- function(input, output, session) {
     })
 
     output$severity_info_ui <- renderUI({
-        if (input$model_selected == "EDRM") {
+        if (
+            is.null(input$model_selected) || input$model_selected == "Classic"
+        ) {
+            req(rv$risk_data)
+            # Check for 3 consecutive high risk days
+            runs <- rle(rv$risk_data$risk_level == "High")
+            has_3_consecutive <- any(runs$values & runs$lengths >= 3)
+
+            if (has_3_consecutive) {
+                div(
+                    class = "text-danger fw-bold",
+                    "แนะนำให้ Action (Action Recommended)"
+                )
+            } else {
+                div(class = "text-warning fw-bold", "เฝ้าระวัง (Watch)")
+            }
+        } else if (input$model_selected == "EDRM") {
             req(rv$severity)
-            div(
-                paste0(
-                    "Predicted Peak Severity: ",
-                    round(rv$severity, 2),
-                    "% (based on ",
-                    rv$high_risk_days,
-                    " high-risk days)"
+            req(rv$risk_data)
+
+            # Check for 2 consecutive high risk days (Prompt: 2-3 days)
+            runs <- rle(rv$risk_data$risk_level == "High")
+            has_consecutive <- any(runs$values & runs$lengths >= 2)
+
+            if (has_consecutive) {
+                rec <- div(
+                    class = "text-danger fw-bold mb-2",
+                    "แนะนำให้ Action (Action Recommended)"
                 )
+            } else {
+                rec <- div(
+                    class = "text-warning fw-bold mb-2",
+                    "เฝ้าระวัง (Watch)"
+                )
+            }
+
+            msg <- paste0(
+                "หากสภาพอากาศเป็นไปตามคาดการณ์ คาดว่าความรุนแรงของโรคไหม้จะเพิ่มขึ้นประมาณ ",
+                round(rv$severity, 2),
+                "% ของพื้นที่ใบ ซึ่งอยู่ในระดับที่ต้องเฝ้าระวังอย่างใกล้ชิด"
             )
+
+            div(rec, div(class = "small text-muted", msg))
         } else if (input$model_selected == "BUS") {
-            div(
-                class = if (rv$high_risk_days > 0) {
-                    "text-danger fw-bold"
-                } else {
-                    ""
-                },
-                paste0(
-                    "High Risk Days (> 2.25): ",
-                    rv$high_risk_days,
-                    " days found in forecast."
+            req(rv$risk_data)
+            # Check for 2 consecutive days with score > threshold
+            runs <- rle(rv$risk_data$risk_level == "High")
+            has_consecutive <- any(runs$values & runs$lengths >= 2)
+
+            if (has_consecutive) {
+                div(
+                    class = "text-danger fw-bold",
+                    "มีความเสี่ยงต่อการเกิดโรคไหม้ (Risk of Rice Blast detected)"
                 )
-            )
+            } else {
+                div(class = "text-warning fw-bold", "เฝ้าระวัง (Watch)")
+            }
         } else if (input$model_selected == "BLASTAM") {
             div(
                 class = if (rv$high_risk_days > 0) {
@@ -900,7 +793,7 @@ server <- function(input, output, session) {
             radioButtons(
                 "model_selected",
                 NULL,
-                choices = c("FIST", "EDRM", "BUS", "BLASTAM", "EPIBLA"),
+                choices = c("Classic", "EDRM", "BUS", "BLASTAM", "EPIBLA"),
                 selected = rv$selected_model,
                 inline = TRUE
             )
@@ -919,7 +812,7 @@ server <- function(input, output, session) {
         } else if (input$model_selected == "BUS") {
             " BUS: Calculating based on wet hours, humidity > 16h, and temperature conditions. Score > 2.25 is High Risk. "
         } else {
-            " FIST: Basic Model focused on hourly temperature and humidity thresholds. "
+            " Classic: บอกสภาวะแวดล้อมที่เหมาะสม (อุณหภูมิ ความชื้น และความเปียกใบ) ของโรคไหม้ มากแค่ไหน"
         }
     })
 
@@ -1092,197 +985,6 @@ server <- function(input, output, session) {
     output$raw_data_table <- renderDT({
         req(rv$risk_data)
         datatable(rv$risk_data, options = list(pageLength = 5, scrollX = TRUE))
-    })
-
-    # --- Model Debugger Server Logic ---
-    debug_data <- reactiveVal(NULL)
-
-    observeEvent(input$run_debug_model, {
-        # Collect 7-day input data
-        days_data <- lapply(1:7, function(i) {
-            data.frame(
-                day = i,
-                date = Sys.Date() + i - 1,
-                max_temp = input[[paste0("d", i, "_tmax")]],
-                min_temp = input[[paste0("d", i, "_tmin")]],
-                max_rh = input[[paste0("d", i, "_rhmax")]],
-                min_rh = input[[paste0("d", i, "_rhmin")]],
-                rain = input[[paste0("d", i, "_rain")]],
-                rh90_hrs = input[[paste0("d", i, "_rh90")]]
-            )
-        })
-        daily_df <- do.call(rbind, days_data)
-
-        # Calculate derived values
-        daily_df$avg_temp <- (daily_df$max_temp + daily_df$min_temp) / 2
-        daily_df$avg_rh <- (daily_df$max_rh + daily_df$min_rh) / 2
-
-        # Run model-specific calculations
-        model <- input$debug_model
-
-        if (model == "FIST") {
-            # FIST: favorable hours >= 10 -> High
-            daily_df$favorable_hours <- ifelse(
-                daily_df$avg_temp >= 20 &
-                    daily_df$avg_temp <= 30 &
-                    daily_df$avg_rh >= 90,
-                daily_df$rh90_hrs,
-                0
-            )
-            daily_df$risk_score <- daily_df$favorable_hours / 24 * 100
-            daily_df$risk_level <- ifelse(
-                daily_df$favorable_hours >= 10,
-                "High",
-                ifelse(daily_df$favorable_hours >= 5, "Medium", "Low")
-            )
-        } else if (model == "EDRM") {
-            # EDRM: RcT * RcW * RcA
-            start_dat <- input$debug_rice_age
-            daily_df$RcT <- calculate_RcT(daily_df$avg_temp)
-            daily_df$RcW <- calculate_RcW(daily_df$rain, daily_df$rh90_hrs)
-            daily_df$current_dat <- start_dat + (daily_df$day - 1)
-            daily_df$RcA <- calculate_RcA(daily_df$current_dat)
-            daily_df$risk_score <- (daily_df$RcT *
-                daily_df$RcW *
-                daily_df$RcA) *
-                100
-            daily_df$risk_level <- ifelse(
-                daily_df$risk_score >= 60,
-                "High",
-                ifelse(daily_df$risk_score >= 30, "Medium", "Low")
-            )
-        } else if (model == "BUS") {
-            # BUS: custom scoring
-            daily_df$bus_score <- mapply(
-                calculate_bus_score,
-                daily_df$avg_temp,
-                daily_df$rh90_hrs,
-                daily_df$rh90_hrs
-            )
-            daily_df$risk_score <- daily_df$bus_score
-            daily_df$risk_level <- ifelse(
-                daily_df$bus_score > 2.25,
-                "High",
-                "Low"
-            )
-        } else if (model == "BLASTAM") {
-            # BLASTAM: simplified - check if rh90_hrs >= 10 and min_temp > 16
-            daily_df$infection <- (daily_df$rh90_hrs >= 10) &
-                (daily_df$min_temp > 16)
-            daily_df$risk_score <- ifelse(daily_df$infection, 100, 0)
-            daily_df$risk_level <- ifelse(
-                daily_df$infection,
-                "Infection",
-                "Low"
-            )
-            # Note: Full BLASTAM needs hourly data, this is a daily approximation
-        } else if (model == "EPIBLA") {
-            # EPIBLA: 7-day rolling calculation
-            resistance <- input$debug_resistance
-
-            # Estimate spores
-            daily_df$est_spores <- 123.068 -
-                (3.08 * daily_df$max_temp) +
-                (0.321 * daily_df$max_rh) -
-                (0.37 * daily_df$min_rh)
-            daily_df$est_spores <- pmax(0, daily_df$est_spores)
-
-            # Estimate dew (0-2)
-            daily_df$dew <- ifelse(
-                daily_df$rh90_hrs > 12,
-                2,
-                ifelse(daily_df$rh90_hrs > 6, 1, 0)
-            )
-
-            # Rolling calculations (use cumsum for first 7 rows)
-            daily_df$total_spores <- cumsum(daily_df$est_spores)
-            daily_df$avg_dew <- cumsum(daily_df$dew) / daily_df$day
-            daily_df$avg_min_temp <- cumsum(daily_df$min_temp) / daily_df$day
-            daily_df$avg_max_rh <- cumsum(daily_df$max_rh) / daily_df$day
-
-            if (resistance == "susceptible") {
-                daily_df$sev <- 0.5561 -
-                    (0.0011 * daily_df$total_spores) +
-                    (0.0017 * daily_df$avg_min_temp) +
-                    (0.2493 * daily_df$avg_dew)
-            } else {
-                daily_df$sev <- 1.0428 -
-                    (0.00007 * daily_df$total_spores) -
-                    (0.0102 * daily_df$avg_max_rh) +
-                    (0.0659 * daily_df$avg_dew)
-            }
-
-            daily_df$risk_score <- pmax(0, pmin(1, daily_df$sev)) * 100
-            daily_df$risk_level <- ifelse(
-                daily_df$risk_score >= 10,
-                "High",
-                ifelse(daily_df$risk_score >= 5, "Medium", "Low")
-            )
-        }
-
-        debug_data(daily_df)
-    })
-
-    output$debug_result_summary <- renderUI({
-        req(debug_data())
-        df <- debug_data()
-        high_days <- sum(df$risk_level == "High", na.rm = TRUE)
-        max_score <- max(df$risk_score, na.rm = TRUE)
-
-        div(
-            p(strong("สรุปผล:"), class = "mb-1"),
-            p(paste0("จำนวนวันเสี่ยงสูง: ", high_days, " วัน")),
-            p(paste0("คะแนนความเสี่ยงสูงสุด: ", round(max_score, 2))),
-            if (high_days > 0) {
-                p(class = "text-danger fw-bold", "⚠ พบความเสี่ยงสูง!")
-            }
-        )
-    })
-
-    output$debug_result_table <- renderDT({
-        req(debug_data())
-        df <- debug_data()
-
-        # Select columns to display based on model
-        display_cols <- c(
-            "day",
-            "date",
-            "avg_temp",
-            "avg_rh",
-            "rain",
-            "rh90_hrs",
-            "risk_score",
-            "risk_level"
-        )
-        if ("RcT" %in% names(df)) {
-            display_cols <- c(display_cols, "RcT", "RcW", "RcA")
-        }
-        if ("bus_score" %in% names(df)) {
-            display_cols <- c(display_cols, "bus_score")
-        }
-        if ("est_spores" %in% names(df)) {
-            display_cols <- c(display_cols, "est_spores", "dew", "sev")
-        }
-        if ("infection" %in% names(df)) {
-            display_cols <- c(display_cols, "infection")
-        }
-
-        # Keep only existing columns
-        display_cols <- intersect(display_cols, names(df))
-
-        datatable(
-            df[, display_cols, drop = FALSE],
-            options = list(
-                pageLength = 7,
-                scrollX = TRUE,
-                dom = 't'
-            ),
-            rownames = FALSE
-        ) %>%
-            formatRound(
-                columns = which(sapply(df[, display_cols], is.numeric)),
-                digits = 2
-            )
     })
 }
 

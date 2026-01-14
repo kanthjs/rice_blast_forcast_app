@@ -10,6 +10,7 @@ library(httr)
 library(jsonlite)
 library(DT)
 library(ggplot2)
+library(weathermetrics)
 
 # Source helper functions
 source("R/get_data.R")

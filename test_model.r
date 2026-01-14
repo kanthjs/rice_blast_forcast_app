@@ -1,33 +1,66 @@
-# model.R - Rice Blast Disease Risk Models
-# Optimized with vectorized functions for better performance
+source("D:/Github/rice_blast_forcast_app/R/get_data.R")
+source("D:/Github/rice_blast_forcast_app/R/model.R")
 
-library(dplyr)
-library(lubridate)
-library(zoo) # For rolling sums/means
+#load sample data
+weather_df <- get_weather_forecast(lat = 13.75 , lon = 100.35)
 
-# --- Vectorized Helper Functions ---
+# 1. Classic
+# --- Original Model (FIST - Legacy) ---
+#calculate_rice_blast_risk <- function(weather_df) {
+  # Add hourly risk flag - vectorized
+  weather_df <- weather_df %>%
+    mutate(
+      is_favorable = (temp >= 20 & temp <= 30) & (humidity >= 90),
+      date = as.Date(time, tz = "Asia/Bangkok")
+    )
+(weather_df)
+
+  # Calculate daily risk
+  daily_risk <- weather_df %>%
+    group_by(date) %>%
+    summarise(
+      favorable_hours = sum(is_favorable, na.rm = TRUE),
+      avg_temp = mean(temp, na.rm = TRUE),
+      avg_humidity = mean(humidity, na.rm = TRUE),
+      total_rain = sum(rain, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      risk_level = case_when(
+        favorable_hours >= 10 ~ "High",
+        favorable_hours >= 5 ~ "Medium",
+        TRUE ~ "Low"
+      ),
+      risk_score = favorable_hours / 24 * 100
+    )
+
+  return(list(hourly = weather_df, daily = daily_risk))
+}
+
+
+# --- 2 EDRM - Beta Function Based ---
 
 #' Temperature Factor (RcT) - Vectorized
 #' @param temp Numeric vector of temperatures
 #' @return Numeric vector of RcT values (0-1)
 calculate_RcT <- function(temp) {
-    Tmin <- 9
-    Topt <- 26
-    Tmax <- 35
+  Tmin <- 9
+  Topt <- 26
+  Tmax <- 35
 
-    # Vectorized calculation
-    result <- numeric(length(temp))
-    valid <- temp > Tmin & temp < Tmax
+  # Vectorized calculation
+  result <- numeric(length(temp))
+  valid <- temp > Tmin & temp < Tmax
 
-    result[valid] <- {
-        t <- temp[valid]
-        part1 <- (t - Tmin) / (Topt - Tmin)
-        part2 <- (Tmax - t) / (Tmax - Topt)
-        exponent <- (Tmax - Topt) / (Topt - Tmin)
-        part1 * (part2^exponent)
-    }
+  result[valid] <- {
+    t <- temp[valid]
+    part1 <- (t - Tmin) / (Topt - Tmin)
+    part2 <- (Tmax - t) / (Tmax - Topt)
+    exponent <- (Tmax - Topt) / (Topt - Tmin)
+    part1 * (part2^exponent)
+  }
 
-    return(result)
+  return(result)
 }
 
 #' Wetness Factor (RcW) - Vectorized
@@ -35,57 +68,25 @@ calculate_RcT <- function(temp) {
 #' @param rh90_hrs Numeric vector of hours with RH >= 90%
 #' @return Numeric vector of RcW values (0-1)
 calculate_RcW <- function(rain, rh90_hrs) {
-    result <- pmin(rh90_hrs / 12, 1.0) # Base: wetness hours
-    result[rain > 100] <- 0 # Wash-off effect
-    result[rain >= 1 & rain <= 50] <- 1.0 # Optimal rain
-    return(result)
+  result <- pmin(rh90_hrs / 12, 1.0) # Base: wetness hours
+  result[rain > 100] <- 0 # Wash-off effect
+  result[rain >= 1 & rain <= 50] <- 1.0 # Optimal rain
+  return(result)
 }
 
 #' Plant Age Factor (RcA) - Vectorized
 #' @param dat Numeric vector of days after transplanting
 #' @return Numeric vector of RcA values (0.1-1)
 calculate_RcA <- function(dat) {
-    result <- ifelse(
-        dat <= 40,
-        1.0,
-        ifelse(dat > 70, 0.1, 1.0 - (0.9 * (dat - 40) / 30))
-    )
-    return(result)
+  result <- ifelse(
+    dat <= 40,
+    1.0,
+    ifelse(dat > 70, 0.1, 1.0 - (0.9 * (dat - 40) / 30))
+  )
+  return(result)
 }
 
-# --- Classic - Legacy ---
-calculate_rice_blast_risk <- function(weather_df) {
-    # Add hourly risk flag - vectorized
-    weather_df <- weather_df %>%
-        mutate(
-            is_favorable = (temp >= 20 & temp <= 30) & (humidity >= 90),
-            date = as.Date(time, tz = "Asia/Bangkok")
-        )
-
-    # Calculate daily risk
-    daily_risk <- weather_df %>%
-        group_by(date) %>%
-        summarise(
-            favorable_hours = sum(is_favorable, na.rm = TRUE),
-            avg_temp = mean(temp, na.rm = TRUE),
-            avg_humidity = mean(humidity, na.rm = TRUE),
-            total_rain = sum(rain, na.rm = TRUE),
-            .groups = "drop"
-        ) %>%
-        mutate(
-            risk_level = case_when(
-                favorable_hours >= 10 ~ "High",
-                favorable_hours >= 5 ~ "Medium",
-                TRUE ~ "Low"
-            ),
-            risk_score = favorable_hours / 24 * 100
-        )
-
-    return(list(hourly = weather_df, daily = daily_risk))
-}
-
-# --- Advanced Model (EDRM - Beta Function Based) ---
-calculate_rice_blast_risk_advanced <- function(weather_df, start_dat = 30) {
+ calculate_rice_blast_risk_advanced <- function(weather_df, start_dat = 30) {
     # 1. Aggregate to Daily
     daily_data <- weather_df %>%
         mutate(date = as.Date(time, tz = "Asia/Bangkok")) %>%
@@ -172,15 +173,15 @@ calculate_bus_score <- function(temp, wet_hours, humid_hours) {
     return(bus)
 }
 
-calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
+#
+
+calculate_rice_blast_risk_bus <- function(weather_df) {
     # 1. Aggregate to Daily
     daily_data <- weather_df %>%
-        mutate(
-            date = as.Date(time, tz = "Asia/Bangkok"),
-            dp = humidity.to.dewpoint(temp, humidity),
-            dpd = temp - dp,
-            wet = ifelse(dpd < 3.7 & humidity > 87, 1, 0)
-        ) %>%
+        mutate(date = as.Date(time, tz = "Asia/Bangkok"),
+               dp = humidity.to.dewpoint(temp, humidity),
+               dpd = temp - dp,
+               wet = ifelse(dpd < 3.7 & humidity > 87, 1, 0)) %>%
         group_by(date) %>%
         summarise(
             Tmean = mean(temp, na.rm = TRUE),
@@ -204,7 +205,7 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
         mutate(
             risk_score = bus_score, # Use raw score for plot
             risk_level = case_when(
-                bus_score > threshold ~ "High",
+                bus_score > 2.25 ~ "High",
                 TRUE ~ "Low"
             )
         )
@@ -216,9 +217,12 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
         daily = daily_results,
         hourly = hourly_df,
         severity_projection = max(daily_results$bus_score, na.rm = TRUE), # Just show max score
-        high_risk_days = sum(daily_results$bus_score > threshold, na.rm = TRUE)
+        high_risk_days = sum(daily_results$bus_score > 2.25, na.rm = TRUE)
     ))
 }
+
+
+
 
 # --- BLASTAM Model ---
 
@@ -228,7 +232,8 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
 #'         'severity_projection' (number of high risk days predicted),
 #'         'high_risk_days' (count of infection days detected)
 calculate_rice_blast_risk_blastam <- function(weather_df) {
-    # 1. Process Hourly Data to find Infection Events
+
+# 1. Process Hourly Data to find Infection Events
     # Rules:
     # - Wet period (RH >= 90%) >= 10 consecutive hours
     # - Min Temp during wet period > 16 C

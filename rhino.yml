@@ -1,0 +1,4 @@
+# rhino.yml - Rhino configuration
+# Using legacy_entrypoint for gradual migration
+
+legacy_entrypoint: app_dir

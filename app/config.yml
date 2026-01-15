@@ -1,0 +1,3 @@
+default:
+  app_name: "Rice Blast Forecast"
+  log_level: "INFO"

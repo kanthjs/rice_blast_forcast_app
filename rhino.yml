@@ -1,4 +1,4 @@
 # rhino.yml - Rhino configuration
-# Using legacy_entrypoint for gradual migration
+# Standard Rhino mode (no legacy entrypoint)
 
-legacy_entrypoint: app_dir
+sass: node

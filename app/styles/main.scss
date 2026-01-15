@@ -1,4 +1,17 @@
 /* main.scss - Main styles for Rice Blast Forecast App */
+// 1. Import font จาก Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;700&family=Roboto:wght@300;400;700&display=swap');
+
+// 2. กำหนดตัวแปรสำหรับการจัดการฟอนต์ (Best practice ของ Sass)
+$primary-font: 'Noto Sans Thai', 'Roboto', sans-serif;
+
+// 3. Apply ให้กับทุก Element
+body,
+html {
+  font-family: $primary-font;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 /* Sidebar Panel */
 .sidebar-panel {

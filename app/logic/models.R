@@ -1,15 +1,28 @@
-# model.R - Rice Blast Disease Risk Models
+# app/logic/models.R - Rice Blast Disease Risk Models
+# Pure R functions for calculating disease risk - no Shiny dependency
 # Optimized with vectorized functions for better performance
 
-library(dplyr)
-library(lubridate)
-library(zoo) # For rolling sums/means
+box::use(
+    dplyr[
+        mutate,
+        group_by,
+        summarise,
+        filter,
+        arrange,
+        case_when,
+        `%>%`
+    ],
+    zoo[rollapply],
+    weathermetrics[humidity.to.dewpoint],
+    utils[head]
+)
 
 # --- Vectorized Helper Functions ---
 
 #' Temperature Factor (RcT) - Vectorized
 #' @param temp Numeric vector of temperatures
 #' @return Numeric vector of RcT values (0-1)
+#' @export
 calculate_RcT <- function(temp) {
     Tmin <- 9
     Topt <- 26
@@ -34,6 +47,7 @@ calculate_RcT <- function(temp) {
 #' @param rain Numeric vector of rainfall
 #' @param rh90_hrs Numeric vector of hours with RH >= 90%
 #' @return Numeric vector of RcW values (0-1)
+#' @export
 calculate_RcW <- function(rain, rh90_hrs) {
     result <- pmin(rh90_hrs / 12, 1.0) # Base: wetness hours
     result[rain > 100] <- 0 # Wash-off effect
@@ -44,6 +58,7 @@ calculate_RcW <- function(rain, rh90_hrs) {
 #' Plant Age Factor (RcA) - Vectorized
 #' @param dat Numeric vector of days after transplanting
 #' @return Numeric vector of RcA values (0.1-1)
+#' @export
 calculate_RcA <- function(dat) {
     result <- ifelse(
         dat <= 40,
@@ -53,7 +68,12 @@ calculate_RcA <- function(dat) {
     return(result)
 }
 
-# --- Classic - Legacy ---
+# --- Classic Model - Legacy ---
+
+#' Calculate Classic Rice Blast Risk
+#' @param weather_df Data frame with hourly weather data
+#' @return List with hourly and daily risk data
+#' @export
 calculate_rice_blast_risk <- function(weather_df) {
     # Add hourly risk flag - vectorized
     weather_df <- weather_df %>%
@@ -85,6 +105,12 @@ calculate_rice_blast_risk <- function(weather_df) {
 }
 
 # --- Advanced Model (EDRM - Beta Function Based) ---
+
+#' Calculate EDRM Risk (Advanced Model)
+#' @param weather_df Data frame with hourly weather data
+#' @param start_dat Starting days after transplanting
+#' @return List with daily, hourly data and severity projection
+#' @export
 calculate_rice_blast_risk_advanced <- function(weather_df, start_dat = 30) {
     # 1. Aggregate to Daily
     daily_data <- weather_df %>%
@@ -98,7 +124,7 @@ calculate_rice_blast_risk_advanced <- function(weather_df, start_dat = 30) {
             .groups = "drop"
         )
 
-    # 2. Calculate daily risk components - NOW FULLY VECTORIZED (no rowwise!)
+    # 2. Calculate daily risk components - FULLY VECTORIZED
     min_date <- min(daily_data$date)
 
     daily_results <- daily_data %>%
@@ -172,6 +198,11 @@ calculate_bus_score <- function(temp, wet_hours, humid_hours) {
     return(bus)
 }
 
+#' Calculate BUS Model Risk
+#' @param weather_df Data frame with hourly weather data
+#' @param threshold BUS score threshold for high risk
+#' @return List with daily, hourly data and risk metrics
+#' @export
 calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
     # 1. Aggregate to Daily
     daily_data <- weather_df %>%
@@ -186,7 +217,6 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
             Tmean = mean(temp, na.rm = TRUE),
             RHmean = mean(humidity, na.rm = TRUE),
             RainSum = sum(rain, na.rm = TRUE),
-            # Using RH >= 90 as proxy for both wetness and high humidity hours
             RH90_hours = sum(humidity >= 90, na.rm = TRUE),
             wetSum = sum(wet, na.rm = TRUE),
             .groups = "drop"
@@ -202,7 +232,7 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
 
     daily_results <- daily_data %>%
         mutate(
-            risk_score = bus_score, # Use raw score for plot
+            risk_score = bus_score,
             risk_level = case_when(
                 bus_score > threshold ~ "High",
                 TRUE ~ "Low"
@@ -215,7 +245,7 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
     return(list(
         daily = daily_results,
         hourly = hourly_df,
-        severity_projection = max(daily_results$bus_score, na.rm = TRUE), # Just show max score
+        severity_projection = max(daily_results$bus_score, na.rm = TRUE),
         high_risk_days = sum(daily_results$bus_score > threshold, na.rm = TRUE)
     ))
 }
@@ -227,6 +257,7 @@ calculate_rice_blast_risk_bus <- function(weather_df, threshold = 2.25) {
 #' @return List with 'daily' (risk data), 'hourly' (processed hourly data),
 #'         'severity_projection' (number of high risk days predicted),
 #'         'high_risk_days' (count of infection days detected)
+#' @export
 calculate_rice_blast_risk_blastam <- function(weather_df) {
     # 1. Process Hourly Data to find Infection Events
     # Rules:
@@ -273,7 +304,7 @@ calculate_rice_blast_risk_blastam <- function(weather_df) {
                 # Record the date(s) of this event
                 dates_involved <- unique(as.Date(
                     weather_df$time[start_row:end_row],
-                    tz = 'Asia/Bangkok'
+                    tz = "Asia/Bangkok"
                 ))
                 infection_dates <- unique(c(infection_dates, dates_involved))
 
@@ -284,10 +315,10 @@ calculate_rice_blast_risk_blastam <- function(weather_df) {
 
     # 2. Generate Daily Risk Table
     infection_dates_num <- as.numeric(infection_dates)
-    high_risk_dates_num <- infection_dates_num + 4 # 10 days later
+    high_risk_dates_num <- infection_dates_num + 4 # 4 days later
 
     daily_results <- weather_df %>%
-        mutate(date = as.Date(time, tz = 'Asia/Bangkok')) %>%
+        mutate(date = as.Date(time, tz = "Asia/Bangkok")) %>%
         group_by(date) %>%
         summarise(
             Tmean = mean(temp, na.rm = TRUE),
@@ -295,24 +326,24 @@ calculate_rice_blast_risk_blastam <- function(weather_df) {
             RainSum = sum(rain, na.rm = TRUE),
             RH90_hours = sum(humidity >= 90, na.rm = TRUE),
             infection_detected = any(is_infection_period, na.rm = TRUE),
-            .groups = 'drop'
+            .groups = "drop"
         ) %>%
         mutate(
             date_num = as.numeric(date),
             risk_level = case_when(
-                date_num %in% high_risk_dates_num ~ 'High',
-                infection_detected ~ 'Infection (Latent)',
-                TRUE ~ 'Low'
+                date_num %in% high_risk_dates_num ~ "High",
+                infection_detected ~ "Infection (Latent)",
+                TRUE ~ "Low"
             ),
             risk_score = case_when(
-                risk_level == 'High' ~ 100,
-                risk_level == 'Infection (Latent)' ~ 50,
+                risk_level == "High" ~ 100,
+                risk_level == "Infection (Latent)" ~ 50,
                 TRUE ~ 0
             )
         )
 
     hourly_df <- weather_df %>%
-        mutate(date = as.Date(time, tz = 'Asia/Bangkok'))
+        mutate(date = as.Date(time, tz = "Asia/Bangkok"))
 
     return(list(
         daily = daily_results,
@@ -330,6 +361,7 @@ calculate_rice_blast_risk_blastam <- function(weather_df) {
 #' @return List with 'daily' (risk data), 'hourly' (processed hourly data),
 #'         'severity_projection' (max severity found),
 #'         'high_risk_days' (count of days with severity > 0.05)
+#' @export
 calculate_rice_blast_risk_epibla <- function(
     weather_df,
     resistance_level = "susceptible"
@@ -368,8 +400,6 @@ calculate_rice_blast_risk_epibla <- function(
     # 3. Calculate 7-day preceding period components
     # Using window of 7 days (including current day)
     # Use partial = TRUE to compute with available data for first 6 days
-    # total_spores (X1), avg_dew (X3), avg_min_temp (X2 for susc), avg_max_rh (X2 for res)
-
     daily_weather <- daily_weather %>%
         mutate(
             total_spores = rollapply(
@@ -435,7 +465,7 @@ calculate_rice_blast_risk_epibla <- function(
         mutate(
             risk_score = pmax(0, pmin(1, sev)) * 100, # 0-100 scale
             risk_level = case_when(
-                risk_score >= 10 ~ "High", # Severity thresholds can be tuned
+                risk_score >= 10 ~ "High",
                 risk_score >= 5 ~ "Medium",
                 TRUE ~ "Low"
             )

@@ -1,9 +1,10 @@
-# get_data.R - Weather API functions with caching and retry logic
+# app/logic/weather_api.R - Weather API functions with caching and retry logic
+# Pure R functions for fetching weather data from Open-Meteo API
 
-library(httr)
-library(jsonlite)
-library(dplyr)
-library(lubridate)
+box::use(
+  httr[RETRY, status_code, content, timeout],
+  jsonlite[fromJSON],
+)
 
 # --- Simple in-memory cache for API responses ---
 .weather_cache <- new.env(parent = emptyenv())
@@ -60,7 +61,7 @@ get_weather_forecast <- function(
 
   response <- tryCatch(
     {
-      httr::RETRY(
+      RETRY(
         "GET",
         base_url,
         query = list(

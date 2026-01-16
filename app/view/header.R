@@ -10,7 +10,7 @@ box::use(
     moduleServer,
     observeEvent
   ],
-  app/view/about_modal[show_about_modal]
+  app / view / about_modal[show_about_modal]
 )
 
 #' @export
@@ -22,7 +22,7 @@ ui <- function(id) {
     div(
       class = "d-flex align-items-center",
       icon("leaf", class = "fa-2x me-2"),
-      h3("Rice Disease Risk Tool", class = "mb-0")
+      h3("ระบบพยากรณ์เตือนภัยการเกิดโรคไหม้ของข้าว", class = "mb-0")
     ),
     actionLink(
       ns("app_info"),

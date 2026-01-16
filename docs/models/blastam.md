@@ -2,6 +2,12 @@
 
 ## คำอธิบาย (Description)
 
+BLASTAM พัฒนาโดย Koshimizu (1983) ใน Hiroshima Prefecture ใช้ empirical criteria เช่น wet duration >10-17 ชม. (ขึ้นกับ temp 15-25°C), precipitation >1 mm/hr, wind <2-4 m/s และ RH สูง เพื่อ classify เป็น favorable/semi/unfavorable conditions. เอกสารต้นฉบับคือ "A forecasting method for leaf blast outbreak by the use of AMeDAS data" ตีพิมพ์ใน Plant Protection 37:454-457 และปรับปรุงโดย Uehara et al. (1988) ในรูปแบบ computer model
+
+## การพัฒนาและใช้งาน
+
+ต่อมาปรับเป็น software บน PC โดย Yokouchi et al. (1986) และ integrate กับ BLASTL (Hashimoto et al. 1984) เพื่อ simulate progression. ในรีวิวปี 2019 ยืนยันว่า BLASTAM accurate สำหรับ leaf blast แต่ panicle blast ต้องปรับปรุง และ operational ที่ http://www.rei-gai.affrc.go.jp. ไทยมีอ้างในเอกสารกรมวิชาการเกษตร (Ishiguro et al. 1988) เปรียบกับ EPIBLA
+
 เน้นการตรวจจับช่วงเวลาติดเชื้อ (Infection Period) เพื่อพยากรณ์การระบาด
 ทำนายว่าจะเกิดการระบาดประมาณ 10 วันหลังการติดเชื้อ
 

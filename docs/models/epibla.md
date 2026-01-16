@@ -2,8 +2,7 @@
 
 ## คำอธิบาย (Description)
 
-ประเมินความรุนแรง (Severity) ของโรค โดยพิจารณาความต้านทานของพันธุ์ข้าว
-ช่วยในการตัดสินใจฉีดพ่นสารป้องกันเชื้อรา
+EPIBLA (EPIdemiology of BLAst) นะครับ เป็นโมเดลคลาสสิกที่พัฒนาขึ้นสำหรับพยากรณ์โรคไหม้ใบข้าวในเขตร้อน เหมาะมากกับงานวิจัยข้าวที่ศูนย์ปทุมธานีของเรา เพราะใช้ stepwise multiple regression จากปัจจัยสภาพอากาศอย่างสปอร์ในอากาศ อุณหภูมิต่ำ ความชื้นสูง และปริมาณน้ำค้าง เพื่อพยากรณ์ incidence ล่วงหน้า 7 วัน
 
 ## ปัจจัยที่ใช้
 
@@ -39,12 +38,12 @@ severity = f(total_spores, avg_max_rh, avg_dew_hours)
 
 ## ระดับความรุนแรง
 
-| Severity | Level | คำแนะนำ |
-|----------|-------|---------|
-| < 5%     | Low   | ปกติ |
-| 5-10%    | Medium| เฝ้าระวัง |
-| > 10%    | High  | ฉีดพ่นสารป้องกันทันที |
+| Severity | Level  | คำแนะนำ               |
+| -------- | ------ | --------------------- |
+| < 5%     | Low    | ปกติ                  |
+| 5-10%    | Medium | เฝ้าระวัง             |
+| > 10%    | High   | ฉีดพ่นสารป้องกันทันที |
 
 ## แหล่งอ้างอิง
 
-- EPIBLA: Epidemiological Blast Assessment Model
+- EPIBLA: K. Manibhushanrao (หรือ M.K. Rao) และ P. Krishnan (หรือ P. Krishan) ปี 1991 ชื่อเต็ม "Epidemiology of blast (EPIBLA): a simulation model and forecasting system for tropical rice in India" ตีพิมพ์ใน proceedings จาก Rice Blast Modeling and Forecasting conference ของ IRRI (International Rice Research Institute) หน้าที่ 31-38.

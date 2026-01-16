@@ -9,7 +9,10 @@ box::use(
     h4,
     div,
     icon,
-    tagList
+    tagList,
+    tags,
+    modalButton,
+    hr
   ],
 )
 
@@ -25,21 +28,17 @@ show_about_modal <- function() {
   modalDialog(
     title = tagList(
       icon("info-circle"),
-      "About the Rice Disease Risk Tool"
+      "Rice Blast Forecasting Tool"
     ),
-    h4("Purpose"),
-    p("This tool provides forecasts for rice blast disease risk based on weather data from the Open-Meteo API. It is intended to be a decision support tool for farmers and agricultural professionals."),
-    h4("Data Source"),
-    p(
-      "Weather data is sourced from the ",
-      a("Open-Meteo API", href = "https://open-meteo.com/", target = "_blank"),
-      ". Forecasts are available for up to 14 days."
+    size = "l",
+    div(
+      class = "markdown-body",
+      # Using includeMarkdown to render the content from the file
+      shiny::includeMarkdown("app/view/about_content.md")
     ),
-    h4("Risk Models"),
-    p("The tool includes several risk models for rice blast. Each model uses different parameters and has its own strengths and weaknesses. Please refer to the model descriptions for more information."),
-    h4("Disclaimer"),
-    p("This tool is for informational purposes only and should not be used as the sole basis for making agricultural decisions. The creators of this tool are not responsible for any losses or damages resulting from its use."),
-    footer = "Developed with the Rhino framework.",
+    footer = tagList(
+      modalButton("Close")
+    ),
     easyClose = TRUE
   )
 }

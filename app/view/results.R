@@ -24,7 +24,11 @@ box::use(
     renderText,
     conditionalPanel,
     numericInput,
+    actionLink,
     selectInput,
+    includeMarkdown,
+    modalDialog,
+    showModal,
     withProgress,
     showNotification,
     radioButtons
